@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFavoritesAutoTests", "MapFavoritesAutoTests.csproj", "{041FCA1E-4B94-4A79-8AF8-07F7419C962C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{041FCA1E-4B94-4A79-8AF8-07F7419C962C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{041FCA1E-4B94-4A79-8AF8-07F7419C962C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{041FCA1E-4B94-4A79-8AF8-07F7419C962C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{041FCA1E-4B94-4A79-8AF8-07F7419C962C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
