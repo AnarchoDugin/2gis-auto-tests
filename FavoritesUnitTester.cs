@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using Newtonsoft.Json;
@@ -493,23 +494,122 @@ public class FavoritesUnitTester : IDisposable
         _testOutputHelper.WriteLine($"First Response: {firstContentString}");
         _testOutputHelper.WriteLine($"Second Response: {secondContentString}");
     }
-}
-
-public class FavoriteResponse
-{
-    public FavoriteResponse(long id, string? title, double lat, double lon, string? color)
+    
+    [Theory]
+    [InlineData("2024-05-20T12:34:56+03:00")]
+    [InlineData("2024-05-20T12:34:56-05:00")]
+    [InlineData("2024-05-20T12:34:56.123+03:00")]
+    [InlineData("2024-05-20T12:34:56.000-05:00")]
+    public void Should_Validate_Correct_ISO860_With_Timezone_Formats(string testDate)
     {
-        Id = id;
-        Title = title;
-        Lat = lat;
-        Lon = lon;
-        Color = color;
+        /*
+         * Валидация корректных форматов даты
+         */
+        var response = new FavoriteResponse(1, "Test", 0, 0, null)
+        {
+            Created_At = testDate
+        };
+    
+        Assert.True(response.IsValidIso8601WithTimezone());
+    
+        var parsedDate = response.GetCreatedAtAsDateTimeOffset();
+        Assert.NotNull(parsedDate);
     }
 
-    public long Id { get; }
-    public string? Title { get; }
-    public double Lat { get; }
-    public double Lon { get; }
-    public string? Color { get; }
-    public string? Created_At { get; }
+    [Theory]
+    [InlineData("2024-05-20T12:34:56Z")]
+    [InlineData("2024-05-20 12:34:56")] 
+    [InlineData("2024-05-20T12:34:56")]
+    [InlineData("invalid-date")]
+    public void Should_Reject_Incorrect_ISO860_Formats(string testDate)
+    {
+        /*
+         * Валидация некорректных форматов даты
+         */
+        var response = new FavoriteResponse(1, "Test", 0, 0, null)
+        {
+            Created_At = testDate
+        };
+
+        Assert.False(response.IsValidIso8601WithTimezone());
+    }
+    
+    [Fact]
+    public async Task API_Should_Return_Created_At_In_ISO8601_With_Timezone_Format()
+    {
+        /*
+         * Проверка корректности формата даты с часовым поясом: YYYY-MM-DDThh:mm:ss±hh:mm
+         * Пример: 2024-05-20T12:34:56+03:00 или 2024-05-20T12:34:56.789+03:00
+         */
+        var sessionCookie = await GetSessionCookie();
+        const string requestData = "title=Test Date Format&lat=24.24&lon=90.0";
+        
+        var content = new StringContent(requestData, Encoding.UTF8, "application/x-www-form-urlencoded");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/v1/favorites");
+        
+        request.Content = content;
+        request.Headers.Add("Cookie", sessionCookie.ToString());
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var responseContent = JsonConvert.DeserializeObject<FavoriteResponse>(responseString);
+        
+        Assert.NotNull(responseContent?.Created_At);
+        Assert.True(responseContent.IsValidIso8601WithTimezone());
+        
+        _testOutputHelper.WriteLine($"Created_At: {responseContent.Created_At}");
+    }
+}
+
+public class FavoriteResponse(long id, string? title, double lat, double lon, string? color)
+{
+    public long Id { get; } = id;
+    public string? Title { get; } = title;
+    public double Lat { get; } = lat;
+    public double Lon { get; } = lon;
+    public string? Color { get; } = color;
+    public string? Created_At { get; init; }
+    
+    public bool IsValidIso8601WithTimezone()
+    {
+        if (string.IsNullOrEmpty(Created_At))
+            return false;
+        
+        string[] patterns = {
+            "yyyy-MM-ddTHH:mm:sszzz",   
+            "yyyy-MM-ddTHH:mm:ss.fffzzz"  
+        };
+
+        return DateTimeOffset.TryParseExact(
+            Created_At,
+            patterns,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out _
+        );
+    }
+
+    public DateTimeOffset? GetCreatedAtAsDateTimeOffset()
+    {
+        if (string.IsNullOrEmpty(Created_At))
+            return null;
+
+        string[] patterns = {
+            "yyyy-MM-ddTHH:mm:sszzz",
+            "yyyy-MM-ddTHH:mm:ss.fffzzz"
+        };
+
+        if (DateTimeOffset.TryParseExact(Created_At,
+                patterns,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var result))
+        {
+            return result;
+        }
+
+        return null;
+    }
 }
